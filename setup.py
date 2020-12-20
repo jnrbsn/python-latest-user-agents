@@ -1,11 +1,15 @@
 from setuptools import setup
 
+with open('README.rst', 'r') as f:
+    long_description = f.read().split('\n\n-----\n\n', 1)[1].lstrip()
+
 setup(
     name='latest-user-agents',
     version='0.0.1',
     description='Get the latest user agent strings for major browsers and OSs',
-    long_description='',
-    url='https://github.com/jnrbsn/python-latest-user-agent',
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
+    url='https://github.com/jnrbsn/python-latest-user-agents',
     author='Jonathan Robson',
     author_email='jnrbsn@gmail.com',
     license='MIT',
