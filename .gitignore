@@ -1,6 +1,14 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
 dist/
 *.egg-info/
+
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.pytest_cache/
+
 venv/
