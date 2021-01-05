@@ -78,12 +78,10 @@ def _download():
                 # Record the time of the last download attempt
                 cursor.execute(
                     """
-                    INSERT INTO "last_download_attempt"
+                    INSERT OR REPLACE INTO "last_download_attempt"
                         ("id", "last_download_attempt") VALUES (0, ?)
-                        ON CONFLICT ("id")
-                            DO UPDATE SET "last_download_attempt" = ?
                     """,
-                    (now, now),
+                    (now,),
                 )
 
             # Download the latest user agents
@@ -96,12 +94,10 @@ def _download():
                 # Insert new user agents
                 cursor.executemany(
                     """
-                    INSERT INTO "user_agents"
+                    INSERT OR REPLACE INTO "user_agents"
                         ("last_seen", "user_agent") VALUES (?, ?)
-                        ON CONFLICT ("user_agent")
-                            DO UPDATE SET "last_seen" = ?
                     """,
-                    [(now, ua, now) for ua in user_agents],
+                    [(now, ua) for ua in user_agents],
                 )
                 # Delete user agents older than 14 days
                 cursor.execute(
