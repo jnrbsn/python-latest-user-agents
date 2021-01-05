@@ -22,4 +22,4 @@ jobs:
         flake8 latest_user_agents.py setup.py tests.py
     - name: Test with pytest
       run: |
-        pytest -lv --cov=latest_user_agents --cov-fail-under=100 --cov-report=term-missing tests.py
+        pytest -lv --cov=latest_user_agents --cov-fail-under=95 --cov-report=term-missing tests.py
