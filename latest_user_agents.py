@@ -1,9 +1,10 @@
-import json
 import os
 import random
 import shutil
+import sqlite3
 import threading
 import time
+from contextlib import contextmanager
 
 import requests
 from appdirs import user_cache_dir
@@ -11,8 +12,29 @@ from appdirs import user_cache_dir
 _download_url = 'https://jnrbsn.github.io/user-agents/user-agents.json'
 
 _cache_dir = user_cache_dir('jnrbsn-user-agents', 'jnrbsn')
-_cache_file = os.path.join(_cache_dir, 'user-agents.json')
-_last_request_time_file = os.path.join(_cache_dir, 'last-request-time.txt')
+_cache_file = os.path.join(_cache_dir, 'user-agents.sqlite')
+_cache_schema = [
+    """
+    CREATE TABLE IF NOT EXISTS "user_agents" (
+        "last_seen" INTEGER NOT NULL,
+        "user_agent" TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS "user_agents_last_seen"
+        ON "user_agents" ("last_seen")
+    """,
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS "user_agents_user_agent"
+        ON "user_agents" ("user_agent")
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS "last_download_attempt" (
+        "id" INTEGER PRIMARY KEY CHECK ("id" = 0),
+        "last_download_attempt" INTEGER NOT NULL
+    )
+    """,
+]
 
 _cached_user_agents = None
 _cache_lock = threading.RLock()
@@ -23,34 +45,105 @@ class LatestUserAgentsError(Exception):
     pass
 
 
+@contextmanager
+def _cache_db_transaction(connection):
+    cursor = connection.cursor()
+    cursor.execute('BEGIN')
+    try:
+        yield cursor
+        cursor.execute('COMMIT')
+    except Exception:
+        cursor.execute('ROLLBACK')
+        raise
+
+
+@contextmanager
+def _cache_db_connection():
+    os.makedirs(_cache_dir, mode=0o755, exist_ok=True)
+    connection = sqlite3.connect(_cache_file, isolation_level=None)
+    try:
+        with _cache_db_transaction(connection) as cursor:
+            for query in _cache_schema:
+                cursor.execute(query)
+        yield connection
+    finally:
+        connection.close()
+
+
 def _download():
     with _cache_lock:
-        os.makedirs(_cache_dir, mode=0o755, exist_ok=True)
+        with _cache_db_connection() as connection:
+            with _cache_db_transaction(connection) as cursor:
+                now = int(time.time())
+                # Record the time of the last download attempt
+                cursor.execute(
+                    """
+                    INSERT INTO "last_download_attempt"
+                        ("id", "last_download_attempt") VALUES (0, ?)
+                        ON CONFLICT ("id")
+                            DO UPDATE SET "last_download_attempt" = ?
+                    """,
+                    (now, now),
+                )
 
-        with open(_last_request_time_file, 'w') as f:
-            f.write('{}\n'.format(int(time.time())))
+            # Download the latest user agents
+            response = requests.get(_download_url, timeout=5)
+            response.raise_for_status()
+            user_agents = response.json()
 
-        # Download the latest user agents
-        response = requests.get(_download_url)
-        response.raise_for_status()
+            with _cache_db_transaction(connection) as cursor:
+                now = int(time.time())
+                # Insert new user agents
+                cursor.executemany(
+                    """
+                    INSERT INTO "user_agents"
+                        ("last_seen", "user_agent") VALUES (?, ?)
+                        ON CONFLICT ("user_agent")
+                            DO UPDATE SET "last_seen" = ?
+                    """,
+                    [(now, ua, now) for ua in user_agents],
+                )
+                # Delete user agents older than 14 days
+                cursor.execute(
+                    'DELETE FROM "user_agents" WHERE "last_seen" < ?',
+                    (now - (14 * 86400),),
+                )
 
-        # Write it to the cache file
-        with open(_cache_file, 'w') as f:
-            f.write(response.text)
-
-        return response.json()
+            return user_agents
 
 
 def _get_last_request_time():
     with _cache_lock:
-        with open(_last_request_time_file, 'r') as f:
-            return int(f.read())
+        with _cache_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT "last_download_attempt"
+                    FROM "last_download_attempt"
+                    WHERE "id" = 0
+                """)
+            # The one row should always be present
+            return cursor.fetchone()[0]
+
+
+def _get_cache_age():
+    with _cache_lock:
+        with _cache_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute('SELECT MAX("last_seen") FROM "user_agents"')
+            row = cursor.fetchone()
+            if row is None or row[0] is None:
+                return None
+            return int(time.time() - row[0])
 
 
 def _read_cache():
     with _cache_lock:
-        with open(_cache_file, 'r') as f:
-            return json.load(f)
+        with _cache_db_connection() as connection:
+            return [
+                row[0] for row in connection.execute(
+                    'SELECT "user_agent" from "user_agents"')
+            ]
 
 
 def get_latest_user_agents():
@@ -67,11 +160,10 @@ def get_latest_user_agents():
             # waiting for the lock
             return _cached_user_agents
 
-        now = time.time()
-
-        if os.path.isfile(_cache_file):
-            cache_age = now - os.path.getmtime(_cache_file)
-            if cache_age < 86400 or now - _get_last_request_time() < 3600:
+        cache_age = _get_cache_age()
+        if cache_age is not None:
+            if (cache_age < 86400
+                    or time.time() - _get_last_request_time() < 3600):
                 # Cache is less than a day old
                 _cached_user_agents = _read_cache()
                 return _cached_user_agents
@@ -80,7 +172,7 @@ def get_latest_user_agents():
             # was over an hour ago
             try:
                 _cached_user_agents = _download()
-            except (requests.ConnectionError, requests.HTTPError):
+            except Exception:
                 if cache_age >= 7 * 86400:
                     raise LatestUserAgentsError((
                         'User agent cache is {:.1f} days old, '
@@ -101,8 +193,10 @@ def clear_user_agent_cache():
 
     with _cache_lock:
         _cached_user_agents = None
-        if os.path.isdir(_cache_dir):
+        try:
             shutil.rmtree(_cache_dir)
+        except FileNotFoundError:
+            pass
 
 
 def get_random_user_agent():

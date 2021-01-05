@@ -5,7 +5,7 @@ with open('README.rst', 'r') as f:
 
 setup(
     name='latest-user-agents',
-    version='0.0.1',
+    version='0.0.2.dev0',
     description='Get the latest user agent strings for major browsers and OSs',
     long_description=long_description,
     long_description_content_type='text/x-rst',

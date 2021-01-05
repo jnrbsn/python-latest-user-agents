@@ -18,6 +18,10 @@ __all__ = []
 fake_user_agents = ['Mozilla/5.0 (Foo) Bar', 'Mozilla/5.0 (Baz) Qux']
 
 
+def _items_equal(a, b):
+    return len(a) == len(b) and sorted(a) == sorted(b)
+
+
 @pytest.fixture(scope='function', autouse=True)
 def patch_cache(monkeypatch):
     """Make all tests use a fresh cache.
@@ -31,10 +35,7 @@ def patch_cache(monkeypatch):
         monkeypatch.setattr(latest_user_agents, '_cache_dir', tmp_dir)
         monkeypatch.setattr(
             latest_user_agents, '_cache_file',
-            os.path.join(tmp_dir, 'user-agents.json'))
-        monkeypatch.setattr(
-            latest_user_agents, '_last_request_time_file',
-            os.path.join(tmp_dir, 'last-request-time.txt'))
+            os.path.join(tmp_dir, 'user-agents.sqlite'))
 
         # Clear in-memory cache
         monkeypatch.setattr(latest_user_agents, '_cached_user_agents', None)
@@ -88,7 +89,7 @@ def clear_in_memory_cache_fixture(monkeypatch):
 @pytest.mark.parametrize(
     ('test_func', 'assertion'),
     (
-        (get_latest_user_agents, lambda x: x == fake_user_agents),
+        (get_latest_user_agents, lambda x: _items_equal(x, fake_user_agents)),
         (get_random_user_agent, lambda x: x in fake_user_agents),
     ),
 )
@@ -143,6 +144,12 @@ def test_expired_cache(spy_download, clear_in_memory_cache):
         spy_download.assert_called_once()
 
 
+def test_double_clear_cache():
+    """Test that clearing the cache multiple times doesn't cause errors."""
+    clear_user_agent_cache()
+    clear_user_agent_cache()
+
+
 def test_download_error(
         monkeypatch, spy_download, spy_read_cache, clear_in_memory_cache):
     """Test cache expiration when we're unable to download new data."""
@@ -168,7 +175,7 @@ def test_download_error(
         monkeypatch.setattr(requests, 'get', mock_requests_get)
 
         # This will attempt to download new data but end up reading the cache
-        assert get_latest_user_agents() == fake_user_agents
+        assert _items_equal(get_latest_user_agents(), fake_user_agents)
         spy_download.assert_called_once()
         assert isinstance(spy_download.spy_exception, requests.ConnectionError)
         spy_read_cache.assert_called_once()
@@ -179,7 +186,7 @@ def test_download_error(
 
         # This should NOT download new data, but read the cache on-disk since
         # we cleared the in-memory cache above
-        assert get_latest_user_agents() == fake_user_agents
+        assert _items_equal(get_latest_user_agents(), fake_user_agents)
         spy_download.assert_not_called()
         spy_read_cache.assert_called_once()
 
