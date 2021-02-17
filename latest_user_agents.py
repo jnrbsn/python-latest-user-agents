@@ -61,6 +61,12 @@ def _cache_db_transaction(connection):
 def _cache_db_connection():
     os.makedirs(_cache_dir, mode=0o755, exist_ok=True)
     connection = sqlite3.connect(_cache_file, isolation_level=None)
+    connection.execute('PRAGMA journal_mode = wal')
+    connection.execute('PRAGMA synchronous = normal')
+    connection.execute('PRAGMA temp_store = memory')
+    connection.execute('PRAGMA foreign_keys = 1')
+    connection.execute('PRAGMA cache_size = -8192')  # 8 MiB
+    connection.execute('PRAGMA mmap_size = 8388608')  # 8 MiB
     try:
         with _cache_db_transaction(connection) as cursor:
             for query in _cache_schema:
