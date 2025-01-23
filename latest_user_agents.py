@@ -7,7 +7,7 @@ import time
 from contextlib import contextmanager
 
 import requests
-from appdirs import user_cache_dir
+from platformdirs import user_cache_dir
 
 _download_url = 'https://jnrbsn.github.io/user-agents/user-agents.json'
 

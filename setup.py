@@ -28,7 +28,7 @@ setup(
     py_modules=['latest_user_agents'],
     python_requires='>=3.9',
     install_requires=[
-        'appdirs',
+        'platformdirs',
         'requests',
     ],
     extras_require={
