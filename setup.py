@@ -5,7 +5,7 @@ with open('README.rst', 'r') as f:
 
 setup(
     name='latest-user-agents',
-    version='0.0.4',
+    version='0.0.5-dev',
     description='Get the latest user agent strings for major browsers and OSs',
     long_description=long_description,
     long_description_content_type='text/x-rst',
@@ -18,15 +18,15 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'Topic :: Internet :: WWW/HTTP',
     ],
     py_modules=['latest_user_agents'],
-    python_requires='>=3.8',
+    python_requires='>=3.9',
     install_requires=[
         'appdirs',
         'requests',
