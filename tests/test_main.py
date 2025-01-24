@@ -13,6 +13,7 @@ import latest_user_agents
 from latest_user_agents import (
     clear_user_agent_cache, get_latest_user_agents, get_random_user_agent)
 
+
 __all__ = []
 
 fake_user_agents = ['Mozilla/5.0 (Foo) Bar', 'Mozilla/5.0 (Baz) Qux']

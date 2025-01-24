@@ -19,7 +19,7 @@ jobs:
         pip install -e .[test]
     - name: Lint with flake8
       run: |
-        flake8 latest_user_agents.py setup.py tests.py
+        flake8 latest_user_agents/ tests/
     - name: Test with pytest
       run: |
-        pytest -lv --cov=latest_user_agents --cov-fail-under=95 --cov-report=term-missing tests.py
+        pytest -lv --cov=latest_user_agents --cov-report=term-missing tests/

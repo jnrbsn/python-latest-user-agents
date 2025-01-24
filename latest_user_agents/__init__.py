@@ -9,6 +9,7 @@ from contextlib import contextmanager
 import requests
 from platformdirs import user_cache_dir
 
+
 _download_url = 'https://jnrbsn.github.io/user-agents/user-agents.json'
 
 _cache_dir = user_cache_dir('jnrbsn-user-agents', 'jnrbsn')
@@ -174,11 +175,12 @@ def get_latest_user_agents():
             # was over an hour ago
             try:
                 _cached_user_agents = _download()
-            except Exception:
+            except Exception as exc:
                 if cache_age >= 7 * 86400:
-                    raise LatestUserAgentsError((
-                        'User agent cache is {:.1f} days old, '
-                        'and attempted update failed').format(cache_age))
+                    raise LatestUserAgentsError(
+                        (f'User agent cache is {cache_age:.1f} days old, '
+                            'and attempted update failed'),
+                    ) from exc
                 else:
                     # Just keep using the cache for now
                     _cached_user_agents = _read_cache()

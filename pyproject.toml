@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "latest-user-agents"
+version = "0.0.5-dev"
+description = "Get the latest user agent strings for major browsers and OSs"
+readme = "README.rst"
+authors = [{name = "Jonathan Robson", email = "jnrbsn@gmail.com"}]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+    "platformdirs",
+    "requests",
+]
+
+[project.urls]
+Repository = "https://github.com/jnrbsn/python-latest-user-agents"
+
+[project.optional-dependencies]
+test = [
+    "flake8",
+    "flake8-bugbear",
+    "flake8-commas",
+    "flake8-isort",
+    "flake8-pyproject",
+    "flake8-quotes",
+    "freezegun",
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+]
+
+[tool.setuptools]
+packages = ["latest_user_agents"]
+
+[tool.flake8]
+avoid-escape = true
+check-inside-f-strings = true
+extend-ignore = ["B903", "B905", "B907"]
+extend-select = ["B9"]
+max-complexity = 10
+max-line-length = 99
+per-file-ignores = [
+    "__init__.py:F401",
+]
+
+[tool.isort]
+combine_as_imports = true
+line_length = 99
+lines_after_imports = 2
+multi_line_output = "VERTICAL_GRID"
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/.venv/*",
+    "*/site-packages/*",
+    "*/tests/*",
+    "*/venv/*",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "@(abc\\.)?abstractmethod",
+]
+fail_under = 95
